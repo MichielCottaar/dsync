@@ -21,8 +21,7 @@ class Remote(Base):
 
     __tablename__ = "remote"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(String, primary_key=True)
     ssh = Column(String, default="")
     syncs = relationship(
         "ToSync",
@@ -34,7 +33,7 @@ class Remote(Base):
         self,
     ):
         """Represent remote as string."""
-        return f"Remote(id={self.id}, name={self.name})"
+        return f"Remote(name={self.name})"
 
 
 class Dataset(Base):
@@ -42,13 +41,14 @@ class Dataset(Base):
 
     __tablename__ = "dataset"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(String, primary_key=True)
     description = Column(String)
     archived = Column(Boolean, default=False)
     last_home_archive = Column(DateTime, default=None)
     last_work_archive = Column(DateTime, default=None)
-    primary_id = Column(Integer, ForeignKey("remote.id"), nullable=True, default=None)
+    primary_name = Column(
+        String, ForeignKey("remote.name"), nullable=True, default=None
+    )
     primary = relationship("Remote")
     syncs = relationship(
         "ToSync",
@@ -71,7 +71,7 @@ class Dataset(Base):
         self,
     ):
         """Represent dataset as string."""
-        return f"Dataset(id={self.id}, name={self.name})"
+        return f"Dataset(name={self.name})"
 
 
 class ToSync(Base):
@@ -84,9 +84,9 @@ class ToSync(Base):
     __tablename__ = "to_sync"
 
     id = Column(Integer, primary_key=True)
-    dataset_id = Column(Integer, ForeignKey("dataset.id"), nullable=False)
+    dataset_name = Column(String, ForeignKey("dataset.name"), nullable=False)
     dataset = relationship("Dataset", back_populates="syncs")
-    remote_id = Column(Integer, ForeignKey("remote.id"), nullable=False)
+    remote_name = Column(String, ForeignKey("remote.name"), nullable=False)
     remote = relationship("Remote", back_populates="syncs")
     last_sync = Column(DateTime)
 
@@ -94,7 +94,7 @@ class ToSync(Base):
         self,
     ):
         """Represent to_sync as string."""
-        return f"ToSync(id={self.id}, dataset={self.dataset}, remote={self.remote})"
+        return f"ToSync(dataset={self.dataset}, remote={self.remote})"
 
 
 @lru_cache
