@@ -28,14 +28,12 @@ def add_dataset(name, description, session, primary=None):
 
 
 @cli.command
-@click.argument("name")
-@click.argument("description")
+@click.argument("name", prompt="Should match SSH name.")
 @in_session
-def add_remote(name, description, session):
+def add_remote(name, session):
     """Add locally existing dataset to database."""
     new_remote = Remote(
         name=name,
         ssh=name,
-        description=description,
     )
     session.add(new_remote)
