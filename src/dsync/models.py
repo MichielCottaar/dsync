@@ -1,5 +1,8 @@
 """Define dsync database models."""
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+import os.path as op
+from functools import lru_cache
+
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -71,3 +74,14 @@ class ToSync(Base):
     ):
         """Represent to_sync as string."""
         return f"ToSync(id={self.id}, dataset={self.dataset}, remote={self.remote})"
+
+
+@lru_cache
+def get_engine(filename="~/.config/dsync.sqlite"):
+    """Get the SQLAlchemy Enginge interacting with the database (one per session)."""
+    filename = op.abspath(op.expandvars(op.expanduser(filename)))
+    database = "sqlite+pysqlite://" + filename
+    engine = create_engine(database, echo=True, future=True)
+
+    Base.metadata.create_all(engine)
+    return engine
