@@ -21,6 +21,7 @@ def add_dataset(name, description, session, primary=None):
     new_dataset = Dataset(
         name=name,
         description=description,
+        primary=primary,
     )
     if primary is None and not op.isdir(new_dataset.local_path):
         raise ValueError("Cannot start syncing a dataset that does not exist locally.")
