@@ -1,9 +1,10 @@
 """Define dsync database models."""
 import os.path as op
-from functools import lru_cache
+from contextlib import contextmanager
+from functools import lru_cache, wraps
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import Session, declarative_base, relationship
 
 Base = declarative_base()
 
@@ -85,3 +86,15 @@ def get_engine(filename="~/.config/dsync.sqlite"):
 
     Base.metadata.create_all(engine)
     return engine
+
+
+@contextmanager
+def in_session(func):
+    """Wrap functions that need to run in a database session."""
+
+    @wraps(func)
+    def wrapped(*args, database="~/.config/dsync.sqlite", **kwargs):
+        engine = get_engine(database)
+        with Session(engine) as session:
+            func(session, *args, **kwargs)
+            session.commit()
