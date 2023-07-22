@@ -7,7 +7,6 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
-    Integer,
     String,
     create_engine,
 )
@@ -83,10 +82,13 @@ class ToSync(Base):
 
     __tablename__ = "to_sync"
 
-    id = Column(Integer, primary_key=True)
-    dataset_name = Column(String, ForeignKey("dataset.name"), nullable=False)
+    dataset_name = Column(
+        String, ForeignKey("dataset.name"), nullable=False, primary_key=True
+    )
     dataset = relationship("Dataset", back_populates="syncs")
-    remote_name = Column(String, ForeignKey("remote.name"), nullable=False)
+    remote_name = Column(
+        String, ForeignKey("remote.name"), nullable=False, primary_key=True
+    )
     remote = relationship("Remote", back_populates="syncs")
     last_sync = Column(DateTime)
 
