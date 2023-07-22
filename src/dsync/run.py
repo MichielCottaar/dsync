@@ -47,8 +47,20 @@ def add_remote(name, session):
 def sync_to(dataset, remote, session):
     """Add locally existing dataset to database."""
     remote_obj = session.query(Remote).get(remote)
+    if remote_obj is None:
+        raise ValueError(
+            f"Unrecognised remote: {remote}. Create new remote using add-remote."
+        )
     dataset_obj = session.query(Dataset).get(dataset)
-    session.add(ToSync(dataset=dataset_obj, remote=remote_obj))
+    if dataset_obj is None:
+        raise ValueError(
+            f"Unrecognised dataset: {dataset}. Create new dataset using add-dataset."
+        )
+    sync_obj = session.query(ToSync).get((dataset, remote))
+    if sync_obj is not None:
+        click.echo(f"{dataset} is already syncing to {remote}")
+    else:
+        session.add(ToSync(dataset=dataset_obj, remote=remote_obj))
 
 
 @cli.command
