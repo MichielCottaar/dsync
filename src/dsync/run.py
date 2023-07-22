@@ -29,7 +29,7 @@ def add_dataset(name, description, session, primary=None):
 
 
 @cli.command
-@click.argument("name", prompt="Should match SSH name.")
+@click.argument("name")
 @in_session
 def add_remote(name, session):
     """Add locally existing dataset to database."""
@@ -38,3 +38,12 @@ def add_remote(name, session):
         ssh=name,
     )
     session.add(new_remote)
+
+
+@cli.command
+@in_session
+def archive(session):
+    """Copy all datasets to archive."""
+    for dataset in session.query(Dataset).all():
+        if not dataset.archived:
+            print(f"TODO, archive: {dataset}")
