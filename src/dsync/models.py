@@ -46,6 +46,8 @@ class Dataset(Base):
     name = Column(String)
     description = Column(String)
     archived = Column(Boolean, default=False)
+    last_home_archive = Column(DateTime, default=None)
+    last_work_archive = Column(DateTime, default=None)
     primary_id = Column(Integer, ForeignKey("remote.id"), nullable=True, default=None)
     primary = relationship("Remote")
     syncs = relationship(
