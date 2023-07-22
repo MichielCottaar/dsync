@@ -3,7 +3,7 @@ import os.path as op
 
 import click
 
-from .models import Dataset, Remote, in_session
+from .models import Dataset, Remote, ToSync, in_session
 
 
 @click.group
@@ -38,6 +38,17 @@ def add_remote(name, session):
         ssh=name,
     )
     session.add(new_remote)
+
+
+@cli.command
+@click.argument("dataset")
+@click.argument("remote")
+@in_session
+def sync_to(dataset, remote, session):
+    """Add locally existing dataset to database."""
+    remote_obj = session.query(Remote).get(remote)
+    dataset_obj = session.query(Dataset).get(dataset)
+    session.add(ToSync(dataset=dataset_obj, remote=remote_obj))
 
 
 @cli.command
