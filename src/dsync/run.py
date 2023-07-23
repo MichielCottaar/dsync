@@ -1,4 +1,5 @@
 """CLI interface for dsync."""
+import datetime
 import os.path as op
 
 import click
@@ -84,6 +85,8 @@ def sync(session, dataset=None, remote=None):
     else:
         remotes = session.query(Remote).all()
 
+    # test ssh connections to remote
+
     for ds_iter in datasets:
         for r_iter in remotes:
             to_sync = session.query(ToSync).get((ds_iter.name, r_iter.name))
@@ -95,6 +98,7 @@ def sync(session, dataset=None, remote=None):
                     )
                 continue
             print(f"Syncing: {to_sync}")
+            to_sync.last_sync = datetime.datetime.now()
 
 
 @cli.command
