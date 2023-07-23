@@ -104,7 +104,7 @@ def get_engine(filename="~/.config/dsync.sqlite"):
     """Get the SQLAlchemy Enginge interacting with the database (one per session)."""
     filename = op.abspath(op.expandvars(op.expanduser(filename)))
     database = "sqlite+pysqlite:///" + filename
-    engine = create_engine(database, echo=True, future=True)
+    engine = create_engine(database, echo=False, future=True)
 
     Base.metadata.create_all(engine)
     return engine
