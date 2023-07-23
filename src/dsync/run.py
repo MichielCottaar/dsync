@@ -61,6 +61,40 @@ def sync_to(dataset, remote, session):
         click.echo(f"{dataset} is already syncing to {remote}")
     else:
         session.add(ToSync(dataset=dataset_obj, remote=remote_obj))
+    sync(session, dataset=dataset, remote=remote)
+
+
+@cli.command
+@click.option("-d", "--dataset")
+@click.option("-r", "--remote")
+@in_session
+def sync(session, dataset=None, remote=None):
+    """Sync any dataset to any remote."""
+    if dataset is not None:
+        datasets = [session.query(Dataset).get(dataset)]
+        if datasets[0] is None:
+            raise ValueError(f"Trying to sync unknown dataset {dataset}.")
+    else:
+        datasets = session.query(Dataset).all()
+
+    if remote is not None:
+        remotes = [session.query(Remote).get(remote)]
+        if remotes[0] is None:
+            raise ValueError(f"Trying to sync unknown remote {remote}.")
+    else:
+        remotes = session.query(Remote).all()
+
+    for ds_iter in datasets:
+        for r_iter in remotes:
+            to_sync = session.query(ToSync).get((ds_iter.name, r_iter.name))
+            if to_sync is None:
+                if dataset is not None and remote is not None:
+                    raise ValueError(
+                        f"Dataset {ds_iter} is not being synced to {r_iter}. "
+                        + "Use `sync-to` to enable this."
+                    )
+                continue
+            print(f"Syncing: {to_sync}")
 
 
 @cli.command
