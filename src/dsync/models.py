@@ -1,8 +1,8 @@
 """Define dsync database models."""
 import os.path as op
 from functools import lru_cache, wraps
+from subprocess import run
 
-from paramiko import AuthenticationException, BadHostKeyException, SSHException, client
 from sqlalchemy import (
     Boolean,
     Column,
@@ -46,18 +46,20 @@ class DataStore(Base):
         Returns None if no connection is available.
         """
         for try_link in self.link.split(","):
-            if type == "ssh":
-                ssh_client = client.SSHClient()
-                try:
-                    ssh_client.connect(try_link)
-                    ssh_client.close()
+            if self.type == "ssh":
+                if (
+                    run(
+                        ["ssh", try_link, "-oBatchMode=yes", "-q", "echo test"]
+                    ).returncode
+                    == 0
+                ):
                     return try_link
-                except (BadHostKeyException, AuthenticationException, SSHException):
-                    pass
-            elif type == "disc":
+            elif self.type == "disc":
                 directory = f"/Volumes/{try_link}/data-archive/"
                 if op.isdir(directory):
                     return directory
+            else:
+                raise ValueError("Unrecognised data store type")
         return None
 
 
