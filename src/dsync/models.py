@@ -15,28 +15,29 @@ from sqlalchemy.orm import Session, declarative_base, relationship
 Base = declarative_base()
 
 
-class Remote(Base):
-    """Data storage location."""
+class DataStore(Base):
+    """Data storage location (ssh/disc)."""
 
-    __tablename__ = "remote"
+    __tablename__ = "data_store"
 
     name = Column(String, primary_key=True)
-    ssh = Column(String, default="")
+    link = Column(String, default="")
+    type = Column(String, default="ssh")  # ssh or disc
     syncs = relationship(
         "ToSync",
-        back_populates="remote",
+        back_populates="store",
         cascade="all",
     )
 
     def __repr__(
         self,
     ):
-        """Represent remote as string."""
-        return f"Remote(name={self.name})"
+        """Represent data store as string."""
+        return f"DataStore(name={self.name})"
 
 
 class Dataset(Base):
-    """Dataset to be synced across remotes."""
+    """Dataset to be synced across data stores."""
 
     __tablename__ = "dataset"
 
@@ -46,9 +47,9 @@ class Dataset(Base):
     last_home_archive = Column(DateTime, default=None)
     last_work_archive = Column(DateTime, default=None)
     primary_name = Column(
-        String, ForeignKey("remote.name"), nullable=True, default=None
+        String, ForeignKey("data_store.name"), nullable=True, default=None
     )
-    primary = relationship("Remote")
+    primary = relationship("DataStore")
     syncs = relationship(
         "ToSync",
         back_populates="dataset",
@@ -75,7 +76,7 @@ class Dataset(Base):
 
 class ToSync(Base):
     """
-    Last time the dataset was synced to specific remote.
+    Last time the dataset was synced to specific data store.
 
     This should only exist for datasets being synced.
     """
@@ -86,17 +87,17 @@ class ToSync(Base):
         String, ForeignKey("dataset.name"), nullable=False, primary_key=True
     )
     dataset = relationship("Dataset", back_populates="syncs")
-    remote_name = Column(
-        String, ForeignKey("remote.name"), nullable=False, primary_key=True
+    store_name = Column(
+        String, ForeignKey("data_store.name"), nullable=False, primary_key=True
     )
-    remote = relationship("Remote", back_populates="syncs")
+    store = relationship("DataStore", back_populates="syncs")
     last_sync = Column(DateTime)
 
     def __repr__(
         self,
     ):
         """Represent to_sync as string."""
-        return f"ToSync(dataset={self.dataset}, remote={self.remote})"
+        return f"ToSync(dataset={self.dataset}, store={self.store}, last_sync={self.last_sync})"
 
 
 @lru_cache

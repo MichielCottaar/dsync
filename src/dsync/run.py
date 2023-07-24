@@ -4,7 +4,7 @@ import os.path as op
 
 import click
 
-from .models import Dataset, Remote, ToSync, in_session
+from .models import Dataset, DataStore, ToSync, in_session
 
 
 @click.group
@@ -34,9 +34,10 @@ def add_dataset(name, description, session, primary=None):
 @in_session
 def add_remote(name, session):
     """Add remote to database."""
-    new_remote = Remote(
+    new_remote = DataStore(
         name=name,
         ssh=name,
+        type="ssh",
     )
     session.add(new_remote)
 
@@ -46,8 +47,8 @@ def add_remote(name, session):
 @click.argument("remote")
 @in_session
 def add_sync(dataset, remote, session):
-    """Sync dataset with remote from now on."""
-    remote_obj = session.query(Remote).get(remote)
+    """Intruct dsync to sync dataset with remote from now on."""
+    remote_obj = session.query(DataStore).get(remote)
     if remote_obj is None:
         raise ValueError(
             f"Unrecognised remote: {remote}. Create new remote using add-remote."
@@ -79,11 +80,11 @@ def sync(session, dataset=None, remote=None):
         datasets = session.query(Dataset).all()
 
     if remote is not None:
-        remotes = [session.query(Remote).get(remote)]
+        remotes = [session.query(DataStore).get(remote)]
         if remotes[0] is None:
             raise ValueError(f"Trying to sync unknown remote {remote}.")
     else:
-        remotes = session.query(Remote).all()
+        remotes = session.query(DataStore).all()
 
     # test ssh connections to remote
 
