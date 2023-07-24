@@ -65,7 +65,7 @@ def add_data_store(name, type, is_archive, link, session):
 @click.argument("remote")
 @in_session
 def add_sync(dataset, remote, session):
-    """Intruct dsync to sync dataset with remote from now on."""
+    """Instruct dsync to sync dataset with remote from now on."""
     remote_obj = session.query(DataStore).get(remote)
     if remote_obj is None:
         raise ValueError(
@@ -86,7 +86,42 @@ def add_sync(dataset, remote, session):
         click.echo(f"{dataset} is already syncing to {remote}")
     else:
         session.add(ToSync(dataset=dataset_obj, store=remote_obj))
-    # sync(session, dataset=dataset, remote=remote)
+    sync.callback(session=session, dataset=dataset, store=remote)
+
+
+@cli.command
+@click.argument("dataset")
+@click.argument("primary", default=None, required=False)
+@in_session
+def set_primary(dataset, primary, session):
+    """
+    Set the primary of dataset to a remote data store.
+
+    If the primary is not provided, it will be set to the local directory system.
+    """
+    dataset = datasets(session, name=dataset)
+    if dataset is None:
+        raise ValueError(f"Cannot set primary of non-existant dataset {dataset}.")
+    if primary is not None:
+        primary = stores(session, name=primary)
+        if primary is None:
+            raise ValueError(f"Cannot set primary to an unknown remote {primary}.")
+        if primary.is_archive:
+            raise ValueError(
+                f"Primary cannot be set to an archive data store, such as {primary}."
+            )
+    if dataset.primary == primary:
+        rich.print("New primary is the same as the old one. Doing nothing...")
+        return
+
+    # Sync from old primary to new primary
+    sync.callback(
+        session=session,
+        dataset=dataset.name,
+        store=dataset.primary.name if primary is None else primary.name,
+    )
+
+    dataset.primary = primary
 
 
 @cli.command
@@ -115,8 +150,8 @@ def list_stores(session):
 @in_session
 def list_datasets(session):
     """List all datasets."""
-    all_stores = stores()
-    all_datasets = datasets()
+    all_stores = stores(session)
+    all_datasets = datasets(session)
 
     table = Table(title="Datasets")
     for header in ("name", "primary", "local"):
@@ -159,8 +194,8 @@ def list_datasets(session):
 @in_session
 def sync(session, dataset=None, store=None):
     """Sync any dataset to any remote."""
-    all_datasets = datasets(session, name=dataset)
-    all_stores = stores(session, name=store)
+    all_datasets = datasets(session, name=dataset, as_list=True)
+    all_stores = stores(session, name=store, as_list=True)
 
     store_links = {s: s.get_connection() for s in all_stores}
     missing = ", ".join(
@@ -170,7 +205,9 @@ def sync(session, dataset=None, store=None):
         rich.print(f"Skipping missing data stores: {missing}")
 
     for ds_iter in all_datasets:
-        ds_iter.sync(session, store_links)
+        rc = ds_iter.sync(session, store_links)
+        if rc != 0 and dataset is not None:
+            raise ValueError(f"Failed to sync {dataset}")
 
 
 @cli.command
