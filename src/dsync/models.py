@@ -110,11 +110,15 @@ class Dataset(Base):
                     + f"is not available for {self.name}."
                 )
             to_sync = session.query(ToSync).get((self.name, self.primary_name))
-            to_sync.sync(link)
+            if to_sync.sync(link) != 0:
+                return 1
 
         return_codes = []
         for remote, link in store_links.items():
-            if remote == self.primary or link is None:
+            if remote == self.primary:
+                return_codes.append(0)
+                continue
+            if link is None:
                 continue
             to_sync = session.query(ToSync).get((self.name, remote.name))
             if to_sync is None:
