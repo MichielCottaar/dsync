@@ -160,14 +160,18 @@ def list_datasets(session):
     all_datasets = datasets(session)
 
     table = Table(title="Datasets")
-    for header in ("name", "primary", "local"):
+    for header in ("name", "primary", "latest edit", "local"):
         table.add_column(header)
     for store in all_stores:
         table.add_column(store.name)
 
     for dataset in all_datasets:
         if dataset.archived:
-            row = [dataset.name, "📁"] + [""] * (len(all_stores) + 1)
+            row = [
+                dataset.name,
+                "📁",
+                dataset.latest_edit.strftime("%Y-%m-%d %I:%M"),
+            ] + [""] * (len(all_stores) + 1)
             table.add_row(*row)
             continue
 
@@ -178,6 +182,8 @@ def list_datasets(session):
         else:
             ls = last_sync(dataset, dataset.primary, session)
             row.extend([dataset.primary.name, ls.strftime("%Y-%m-%d %I:%M")])
+        dataset.update_latest_edit()
+        row.insert(2, dataset.latest_edit.strftime("%Y-%m-%d %I:%M"))
 
         for store in all_stores:
             if store == dataset.primary:

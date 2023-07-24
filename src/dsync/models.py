@@ -1,4 +1,5 @@
 """Define dsync database models."""
+import os
 import os.path as op
 from datetime import datetime
 from functools import lru_cache, wraps
@@ -79,6 +80,7 @@ class Dataset(Base):
         back_populates="dataset",
         cascade="all",
     )
+    latest_edit = Column(DateTime, nullable=True)
 
     @property
     def local_path(
@@ -90,6 +92,19 @@ class Dataset(Base):
         The data should exist in this location unless `self.archive` is True.
         """
         return op.join(op.expanduser("~/Work/data"), self.name) + "/"
+
+    def update_latest_edit(
+        self,
+    ):
+        """Update time of latest edit, presuming the local version is up to date."""
+        max_mtime = 0
+        for dirname, _, files in os.walk(self.local_path):
+            for fname in files:
+                full_path = os.path.join(dirname, fname)
+                mtime = os.stat(full_path).st_mtime
+                if mtime > max_mtime:
+                    max_mtime = mtime
+        self.latest_edit = datetime.fromtimestamp(mtime)
 
     def __repr__(
         self,
