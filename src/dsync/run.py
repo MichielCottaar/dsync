@@ -33,7 +33,7 @@ def add_dataset(name, description, session, primary=None):
 
 @cli.command
 @click.argument("name")
-@click.option("-t", "--type")
+@click.option("-t", "--type", default="ssh")
 @click.option("-l", "--link")
 def add_remote(name, type="ssh", link=None):
     """Add remote to database."""
@@ -42,7 +42,7 @@ def add_remote(name, type="ssh", link=None):
 
 @cli.command
 @click.argument("name")
-@click.option("-t", "--type")
+@click.option("-t", "--type", default="disc")
 @click.option("-l", "--link")
 def add_archive(name, type="disc", link=None):
     """Add archive to database."""
@@ -54,6 +54,8 @@ def add_data_store(name, type, is_archive, link, session):
     """Add data store (remote or archive) to database."""
     if link is None:
         link = name
+    if type not in ("disc", "ssh"):
+        raise ValueError(f"Data store type should be one of disc/ssh, not {type}")
     new_remote = DataStore(name=name, link=link, type=type, is_archive=is_archive)
     session.add(new_remote)
 
@@ -98,7 +100,8 @@ def list_stores(session):
     for header in ("name", "directory", "works"):
         archives.add_column(header)
 
-    for store, link in stores(session=session):
+    for store in stores(session=session):
+        link = store.get_connection()
         works = "❌" if link is None else "✅︎"
         if store.is_archive:
             archives.add_row(store.name, store.link, works)
@@ -112,18 +115,18 @@ def list_stores(session):
 @in_session
 def list_datasets(session):
     """List all datasets."""
-    stores = session.query(DataStore).all()
-    datasets = session.query(Dataset).all()
+    all_stores = stores()
+    all_datasets = datasets()
 
     table = Table(title="Datasets")
     for header in ("name", "primary", "local"):
         table.add_column(header)
-    for store in stores:
+    for store in all_stores:
         table.add_column(store.name)
 
-    for dataset in datasets:
+    for dataset in all_datasets:
         if dataset.archived:
-            row = [dataset.name, "📁"] + [""] * (len(stores) + 1)
+            row = [dataset.name, "📁"] + [""] * (len(all_stores) + 1)
             table.add_row(*row)
             continue
 
@@ -135,7 +138,7 @@ def list_datasets(session):
             ls = last_sync(dataset, dataset.primary, session)
             row.extend([dataset.primary.name, ls])
 
-        for store in stores:
+        for store in all_stores:
             if store == dataset.primary:
                 row.append("primary")
             else:
