@@ -33,7 +33,7 @@ def add_dataset(name, description, session, primary=None):
 @click.argument("name")
 @in_session
 def add_remote(name, session):
-    """Add locally existing dataset to database."""
+    """Add remote to database."""
     new_remote = Remote(
         name=name,
         ssh=name,
@@ -45,8 +45,8 @@ def add_remote(name, session):
 @click.argument("dataset")
 @click.argument("remote")
 @in_session
-def sync_to(dataset, remote, session):
-    """Add locally existing dataset to database."""
+def add_sync(dataset, remote, session):
+    """Sync dataset with remote from now on."""
     remote_obj = session.query(Remote).get(remote)
     if remote_obj is None:
         raise ValueError(
@@ -94,7 +94,7 @@ def sync(session, dataset=None, remote=None):
                 if dataset is not None and remote is not None:
                     raise ValueError(
                         f"Dataset {ds_iter} is not being synced to {r_iter}. "
-                        + "Use `sync-to` to enable this."
+                        + "Use `add-sync` to enable this."
                     )
                 continue
             print(f"Syncing: {to_sync}")
