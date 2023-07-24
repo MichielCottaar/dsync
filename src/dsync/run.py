@@ -7,7 +7,7 @@ import rich
 from rich.table import Table
 
 from .models import Dataset, DataStore, ToSync, in_session
-from .query import stores
+from .query import last_sync, stores
 
 
 @click.group
@@ -64,6 +64,11 @@ def add_sync(dataset, remote, session):
         raise ValueError(
             f"Unrecognised remote: {remote}. Create new remote using add-remote."
         )
+    if remote_obj.is_archive:
+        raise ValueError(
+            "All datasets will be archived. "
+            + f"No need to manually add archive datastore {remote_obj.name}."
+        )
     dataset_obj = session.query(Dataset).get(dataset)
     if dataset_obj is None:
         raise ValueError(
@@ -73,8 +78,8 @@ def add_sync(dataset, remote, session):
     if sync_obj is not None:
         click.echo(f"{dataset} is already syncing to {remote}")
     else:
-        session.add(ToSync(dataset=dataset_obj, remote=remote_obj))
-    sync(session, dataset=dataset, remote=remote)
+        session.add(ToSync(dataset=dataset_obj, store=remote_obj))
+    # sync(session, dataset=dataset, remote=remote)
 
 
 @cli.command
@@ -96,6 +101,48 @@ def list_stores(session):
             remotes.add_row(store.name, store.link, works)
     rich.print(archives)
     rich.print(remotes)
+
+
+@cli.command
+@in_session
+def list_datasets(session):
+    """List all datasets."""
+    stores = session.query(DataStore).all()
+    datasets = session.query(Dataset).all()
+
+    table = Table(title="Datasets")
+    for header in ("name", "primary", "local"):
+        table.add_column(header)
+    for store in stores:
+        table.add_column(store.name)
+
+    for dataset in datasets:
+        if dataset.archived:
+            row = [dataset.name, "📁"] + [""] * (len(stores) + 1)
+            table.add_row(*row)
+            continue
+
+        row = [dataset.name]
+        if dataset.primary is None:
+            # local version is the primary one
+            row.extend(["local", "primary"])
+        else:
+            ls = last_sync(dataset, dataset.primary, session)
+            row.extend([dataset.primary.name, ls])
+
+        for store in stores:
+            if store == dataset.primary:
+                row.append("primary")
+            else:
+                ls = last_sync(dataset, store, session)
+                row.append(
+                    ""
+                    if ls is None
+                    else (ls if isinstance(ls, str) else ls.strftime("%Y-%m-%d %I:%M"))
+                )
+        table.add_row(*row)
+
+    rich.print(table)
 
 
 @cli.command
