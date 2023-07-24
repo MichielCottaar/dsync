@@ -3,8 +3,11 @@ import datetime
 import os.path as op
 
 import click
+import rich
+from rich.table import Table
 
 from .models import Dataset, DataStore, ToSync, in_session
+from .query import stores
 
 
 @click.group
@@ -46,7 +49,7 @@ def add_archive(name):
 @in_session
 def add_data_store(name, type, is_archive, session):
     """Add data store (remote or archive) to database."""
-    new_remote = DataStore(name=name, ssh=name, type=type, is_archive=is_archive)
+    new_remote = DataStore(name=name, link=name, type=type, is_archive=is_archive)
     session.add(new_remote)
 
 
@@ -72,6 +75,27 @@ def add_sync(dataset, remote, session):
     else:
         session.add(ToSync(dataset=dataset_obj, remote=remote_obj))
     sync(session, dataset=dataset, remote=remote)
+
+
+@cli.command
+@in_session
+def list_stores(session):
+    """List all data stores (remotes & archives)."""
+    remotes = Table(title="")
+    for header in ("name", "link", "works"):
+        remotes.add_column(header)
+    archives = Table(title="")
+    for header in ("name", "directory", "works"):
+        archives.add_column(header)
+
+    for store, link in stores(session=session):
+        works = "❌" if link is None else "✅︎"
+        if store.is_archive:
+            archives.add_row(store.name, store.link, works)
+        else:
+            remotes.add_row(store.name, store.link, works)
+    rich.print(archives)
+    rich.print(remotes)
 
 
 @cli.command
