@@ -2,6 +2,7 @@
 import os.path as op
 from functools import lru_cache, wraps
 
+from paramiko import AuthenticationException, BadHostKeyException, SSHException, client
 from sqlalchemy import (
     Boolean,
     Column,
@@ -35,6 +36,29 @@ class DataStore(Base):
     ):
         """Represent data store as string."""
         return f"DataStore(name={self.name})"
+
+    def get_connection(
+        self,
+    ):
+        """
+        Get the best connection to the DataStore.
+
+        Returns None if no connection is available.
+        """
+        for try_link in self.link.split(","):
+            if type == "ssh":
+                ssh_client = client.SSHClient()
+                try:
+                    ssh_client.connect(try_link)
+                    ssh_client.close()
+                    return try_link
+                except (BadHostKeyException, AuthenticationException, SSHException):
+                    pass
+            elif type == "disc":
+                directory = f"/Volumes/{try_link}/data-archive/"
+                if op.isdir(directory):
+                    return directory
+        return None
 
 
 class Dataset(Base):
