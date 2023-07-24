@@ -33,22 +33,28 @@ def add_dataset(name, description, session, primary=None):
 
 @cli.command
 @click.argument("name")
-def add_remote(name):
+@click.option("-t", "--type")
+@click.option("-l", "--link")
+def add_remote(name, type="ssh", link=None):
     """Add remote to database."""
-    add_data_store(name, "ssh", False)
+    add_data_store(name, type, False, link)
 
 
 @cli.command
 @click.argument("name")
-def add_archive(name):
+@click.option("-t", "--type")
+@click.option("-l", "--link")
+def add_archive(name, type="disc", link=None):
     """Add archive to database."""
-    add_data_store(name, "disc", True)
+    add_data_store(name, type, True, link)
 
 
 @in_session
-def add_data_store(name, type, is_archive, session):
+def add_data_store(name, type, is_archive, link, session):
     """Add data store (remote or archive) to database."""
-    new_remote = DataStore(name=name, link=name, type=type, is_archive=is_archive)
+    if link is None:
+        link = name
+    new_remote = DataStore(name=name, link=link, type=type, is_archive=is_archive)
     session.add(new_remote)
 
 
