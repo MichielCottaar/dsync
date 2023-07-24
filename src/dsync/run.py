@@ -1,5 +1,6 @@
 """CLI interface for dsync."""
 import os.path as op
+from subprocess import run
 
 import click
 import rich
@@ -236,6 +237,8 @@ def archive(dataset, session):
     It will no longer be synced and can be safely deleted from other machines.
     """
     dataset_obj = datasets(session, name=dataset)
+    if dataset_obj.archived:
+        raise ValueError(f"Dataset '{dataset}' is already archived.")
     if dataset_obj.primary is not None:
         sync.callback(session=session, dataset=dataset)
     dataset_obj.update_latest_edit()
@@ -249,3 +252,39 @@ def archive(dataset, session):
             )
     rich.print("archiving", dataset_obj)
     dataset_obj.archived = True
+
+
+@cli.command
+@click.argument("dataset")
+@in_session
+def unarchive(dataset, session):
+    """
+    Retrieve dataset from the archive.
+
+    The primary will always be reset to local.
+    """
+    dataset_obj = datasets(session, name=dataset)
+    if not dataset_obj.archived:
+        raise ValueError(f"Dataset '{dataset}' is not archived already.")
+
+    for store in stores(session):
+        print(store)
+        if not store.is_archive:
+            continue
+        link = store.get_connection()
+        print(link)
+        if link is None:
+            continue
+        if (
+            run(
+                ["rsync", "-aP", op.join(link, dataset), dataset_obj.local_path]
+            ).returncode
+            == 0
+        ):
+            break
+    else:
+        raise ValueError(f"Could not retrieve '{dataset}' from archive.")
+
+    rich.print("unarchiving", dataset_obj)
+    dataset_obj.archived = False
+    dataset_obj.primary = None
