@@ -237,7 +237,7 @@ def archive(dataset, session):
     """
     dataset_obj = datasets(session, name=dataset)
     if dataset_obj.primary is not None:
-        sync.callback(session=session, dataset=dataset, store=dataset_obj.primary.name)
+        sync.callback(session=session, dataset=dataset)
     dataset_obj.update_latest_edit()
     for sync_obj in dataset_obj.syncs:
         if sync_obj.store.is_archive and (
