@@ -172,16 +172,18 @@ class ToSync(Base):
             )
 
         if self.store.type == "disc":
-            store_path = f"{link_name}/{self.dataset_name}/"
+            store_path = f"{link_name}/{self.dataset.name}/"
         elif self.store.type == "ssh":
-            store_path = f"{link_name}:Work/data/{self.dataset_name}/"
+            store_path = f"{link_name}:Work/data/{self.dataset.name}/"
 
         if self.store == self.dataset.primary:
             if self.store.is_archive:
                 raise ValueError("Primary data store should not be an archive.")
-            rc = run(["rsync", "-aP", store_path, self.dataset.local_path]).returncode
+            cmd = ["rsync", "-aP", store_path, self.dataset.local_path]
         else:
-            rc = run(["rsync", "-aP", self.dataset.local_path, store_path]).returncode
+            cmd = ["rsync", "-aP", self.dataset.local_path, store_path]
+        print("running ", " ".join(cmd))
+        rc = run(cmd).returncode
         if rc == 0:
             self.last_sync = datetime.now()
         return rc
