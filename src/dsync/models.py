@@ -21,8 +21,9 @@ class DataStore(Base):
     __tablename__ = "data_store"
 
     name = Column(String, primary_key=True)
-    link = Column(String, default="")
-    type = Column(String, default="ssh")  # ssh or disc
+    link = Column(String)
+    type = Column(String)  # ssh or disc
+    is_archive = Column(Boolean)
     syncs = relationship(
         "ToSync",
         back_populates="store",

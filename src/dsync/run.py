@@ -31,14 +31,22 @@ def add_dataset(name, description, session, primary=None):
 
 @cli.command
 @click.argument("name")
-@in_session
-def add_remote(name, session):
+def add_remote(name):
     """Add remote to database."""
-    new_remote = DataStore(
-        name=name,
-        ssh=name,
-        type="ssh",
-    )
+    add_data_store(name, "ssh", False)
+
+
+@cli.command
+@click.argument("name")
+def add_archive(name):
+    """Add archive to database."""
+    add_data_store(name, "disc", True)
+
+
+@in_session
+def add_data_store(name, type, is_archive, session):
+    """Add data store (remote or archive) to database."""
+    new_remote = DataStore(name=name, ssh=name, type=type, is_archive=is_archive)
     session.add(new_remote)
 
 
