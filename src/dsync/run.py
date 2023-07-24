@@ -33,7 +33,7 @@ def add_dataset(name, description, session, primary=None):
 
 @cli.command
 @click.argument("name")
-@click.option("-t", "--type", default="ssh")
+@click.option("-t", "--type", default="ssh", show_default=True)
 @click.option("-l", "--link")
 def add_remote(name, type="ssh", link=None):
     """Add remote to database."""
@@ -42,7 +42,7 @@ def add_remote(name, type="ssh", link=None):
 
 @cli.command
 @click.argument("name")
-@click.option("-t", "--type", default="disc")
+@click.option("-t", "--type", default="disc", show_default=True)
 @click.option("-l", "--link")
 def add_archive(name, type="disc", link=None):
     """Add archive to database."""
@@ -92,8 +92,9 @@ def add_sync(dataset, remote, session):
 @cli.command
 @click.argument("dataset")
 @click.argument("primary", default=None, required=False)
+@click.option("--skip-sync", is_flag=True, default=False)
 @in_session
-def set_primary(dataset, primary, session):
+def set_primary(dataset, primary, session, skip_sync=False):
     """
     Set the primary of dataset to a remote data store.
 
@@ -115,11 +116,12 @@ def set_primary(dataset, primary, session):
         return
 
     # Sync from old primary to new primary
-    sync.callback(
-        session=session,
-        dataset=dataset.name,
-        store=dataset.primary.name if primary is None else primary.name,
-    )
+    if not skip_sync:
+        sync.callback(
+            session=session,
+            dataset=dataset.name,
+            store=dataset.primary.name if primary is None else primary.name,
+        )
 
     dataset.primary = primary
 
