@@ -44,8 +44,6 @@ class Dataset(Base):
     name = Column(String, primary_key=True)
     description = Column(String)
     archived = Column(Boolean, default=False)
-    last_home_archive = Column(DateTime, default=None)
-    last_work_archive = Column(DateTime, default=None)
     primary_name = Column(
         String, ForeignKey("data_store.name"), nullable=True, default=None
     )
