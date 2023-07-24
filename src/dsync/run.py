@@ -171,7 +171,7 @@ def list_datasets(session):
             row.extend(["local", "primary"])
         else:
             ls = last_sync(dataset, dataset.primary, session)
-            row.extend([dataset.primary.name, ls])
+            row.extend([dataset.primary.name, ls.strftime("%Y-%m-%d %I:%M")])
 
         for store in all_stores:
             if store == dataset.primary:
