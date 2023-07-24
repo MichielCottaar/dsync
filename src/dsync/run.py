@@ -128,6 +128,12 @@ def set_primary(dataset, primary, session, skip_sync=False):
 
 @cli.command
 @in_session
+def list(session):
+    """List all data stores and datasets."""
+    list_stores(session)
+    list_datasets(session)
+
+
 def list_stores(session):
     """List all data stores (remotes & archives)."""
     remotes = Table(title="Remote data stores")
@@ -148,8 +154,6 @@ def list_stores(session):
     rich.print(remotes)
 
 
-@cli.command
-@in_session
 def list_datasets(session):
     """List all datasets."""
     all_stores = stores(session)
