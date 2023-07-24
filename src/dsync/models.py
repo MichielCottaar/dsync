@@ -140,10 +140,11 @@ def in_session(func):
     @wraps(func)
     def wrapped(*args, database="~/.config/dsync.sqlite", session=None, **kwargs):
         if session is not None:
-            func(*args, session=session, **kwargs)
+            return func(*args, session=session, **kwargs)
         engine = get_engine(database)
         with Session(engine) as session:
-            func(*args, session=session, **kwargs)
+            res = func(*args, session=session, **kwargs)
             session.commit()
+        return res
 
     return wrapped
