@@ -81,10 +81,10 @@ def add_sync(dataset, remote, session):
 @in_session
 def list_stores(session):
     """List all data stores (remotes & archives)."""
-    remotes = Table(title="")
+    remotes = Table(title="Remote data stores")
     for header in ("name", "link", "works"):
         remotes.add_column(header)
-    archives = Table(title="")
+    archives = Table(title="Archives")
     for header in ("name", "directory", "works"):
         archives.add_column(header)
 
