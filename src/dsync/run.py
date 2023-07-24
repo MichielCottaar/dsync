@@ -217,15 +217,35 @@ def sync(session, dataset=None, store=None):
         rich.print(f"Skipping missing data stores: {missing}")
 
     for ds_iter in all_datasets:
-        rc = ds_iter.sync(session, store_links)
-        if rc != 0 and dataset is not None:
-            raise ValueError(f"Failed to sync {dataset}")
+        try:
+            rc = ds_iter.sync(session, store_links)
+            if rc != 0:
+                raise ValueError(f"Failed to sync {dataset}")
+        except ValueError as e:
+            if dataset is not None:
+                raise e
 
 
 @cli.command
+@click.argument("dataset")
 @in_session
-def archive(session):
-    """Copy all datasets to archive."""
-    for dataset in session.query(Dataset).all():
-        if not dataset.archived:
-            print(f"TODO, archive: {dataset}")
+def archive(dataset, session):
+    """
+    Mark dataset as mainly existing on the archive.
+
+    It will no longer be synced and can be safely deleted from other machines.
+    """
+    dataset_obj = datasets(session, name=dataset)
+    if dataset_obj.primary is not None:
+        sync.callback(session=session, dataset=dataset, store=dataset_obj.primary.name)
+    dataset_obj.update_latest_edit()
+    for sync_obj in dataset_obj.syncs:
+        if sync_obj.store.is_archive and (
+            sync_obj.last_sync is None or (sync_obj.last_sync < dataset_obj.latest_edit)
+        ):
+            raise ValueError(
+                f"Can not archive dataset '{dataset}', "
+                f"because sync to store '{sync_obj.store.name}' is not up to date."
+            )
+    rich.print("archiving", dataset_obj)
+    dataset_obj.archived = True
