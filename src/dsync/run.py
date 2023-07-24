@@ -1,5 +1,4 @@
 """CLI interface for dsync."""
-import datetime
 import os.path as op
 
 import click
@@ -7,7 +6,7 @@ import rich
 from rich.table import Table
 
 from .models import Dataset, DataStore, ToSync, in_session
-from .query import last_sync, stores
+from .query import datasets, last_sync, stores
 
 
 @click.group
@@ -147,38 +146,22 @@ def list_datasets(session):
 
 @cli.command
 @click.option("-d", "--dataset")
-@click.option("-r", "--remote")
+@click.option("-s", "--store")
 @in_session
-def sync(session, dataset=None, remote=None):
+def sync(session, dataset=None, store=None):
     """Sync any dataset to any remote."""
-    if dataset is not None:
-        datasets = [session.query(Dataset).get(dataset)]
-        if datasets[0] is None:
-            raise ValueError(f"Trying to sync unknown dataset {dataset}.")
-    else:
-        datasets = session.query(Dataset).all()
+    all_datasets = datasets(session, name=dataset)
+    all_stores = stores(session, name=store)
 
-    if remote is not None:
-        remotes = [session.query(DataStore).get(remote)]
-        if remotes[0] is None:
-            raise ValueError(f"Trying to sync unknown remote {remote}.")
-    else:
-        remotes = session.query(DataStore).all()
+    store_links = {s: s.get_connection() for s in all_stores}
+    missing = ", ".join(
+        [key.name for key, value in store_links.items() if value is None]
+    )
+    if len(missing) > 0:
+        rich.print(f"Skipping missing data stores: {missing}")
 
-    # test ssh connections to remote
-
-    for ds_iter in datasets:
-        for r_iter in remotes:
-            to_sync = session.query(ToSync).get((ds_iter.name, r_iter.name))
-            if to_sync is None:
-                if dataset is not None and remote is not None:
-                    raise ValueError(
-                        f"Dataset {ds_iter} is not being synced to {r_iter}. "
-                        + "Use `add-sync` to enable this."
-                    )
-                continue
-            print(f"Syncing: {to_sync}")
-            to_sync.last_sync = datetime.datetime.now()
+    for ds_iter in all_datasets:
+        ds_iter.sync(session, store_links)
 
 
 @cli.command

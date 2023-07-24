@@ -1,5 +1,6 @@
 """Define dsync database models."""
 import os.path as op
+from datetime import datetime
 from functools import lru_cache, wraps
 from subprocess import run
 
@@ -48,9 +49,7 @@ class DataStore(Base):
         for try_link in self.link.split(","):
             if self.type == "ssh":
                 if (
-                    run(
-                        ["ssh", try_link, "-oBatchMode=yes", "-q", "echo test"]
-                    ).returncode
+                    run(["ssh", try_link, "-oBatchMode=yes", "-q", "echo"]).returncode
                     == 0
                 ):
                     return try_link
@@ -86,17 +85,46 @@ class Dataset(Base):
         self,
     ):
         """
-        Return path to local version of dataset.
+        Path to local version of dataset.
 
         The data should exist in this location unless `self.archive` is True.
         """
-        return op.join(op.expanduser("~/Work/data"), self.name)
+        return op.join(op.expanduser("~/Work/data"), self.name) + "/"
 
     def __repr__(
         self,
     ):
         """Represent dataset as string."""
         return f"Dataset(name={self.name})"
+
+    def sync(self, session, store_links):
+        """Sync this dataset with the given store links."""
+        if self.primary is not None:
+            if self.primary not in store_links:
+                link = self.primary.get_connection()
+            else:
+                link = store_links[self.primary]
+            if link is None:
+                raise ValueError(
+                    f"Connection to primary store {self.primary_name} "
+                    + f"is not available for {self.name}."
+                )
+            to_sync = session.query(ToSync).get((self.name, self.primary_name))
+            to_sync.sync(link)
+
+        return_codes = []
+        for remote, link in store_links.items():
+            if remote == self.primary or link is None:
+                continue
+            to_sync = session.query(ToSync).get((self.name, remote.name))
+            if to_sync is None:
+                if remote.is_archive:
+                    to_sync = ToSync(dataset=self, store=remote)
+                    session.add(to_sync)
+                else:
+                    continue
+            return_codes.append(to_sync.sync(link))
+        return 1 if len(return_codes) == 0 else min(abs(x) for x in return_codes)
 
 
 class ToSync(Base):
@@ -123,6 +151,40 @@ class ToSync(Base):
     ):
         """Represent to_sync as string."""
         return f"ToSync(dataset={self.dataset}, store={self.store}, last_sync={self.last_sync})"
+
+    @property
+    def path(
+        self,
+    ):
+        """Path to dataset on data store."""
+        if self.store.type == "disc":
+            return f"/Volumes/{self.store_name}/data-archive/{self.dataset_name}/"
+        if self.store.type == "ssh":
+            return f"/Volumes/{self.store_name}/data-archive/{self.dataset_name}/"
+
+    def sync(self, link_name):
+        """Sync data in dataset from/to the store."""
+        if self.dataset.archived:
+            raise ValueError("Cannot sync an archived dataset.")
+        if link_name is None:
+            raise ValueError(
+                f"Trying to sync with an unavailable data store {self.store_name}"
+            )
+
+        if self.store.type == "disc":
+            store_path = f"{link_name}/{self.dataset_name}/"
+        elif self.store.type == "ssh":
+            store_path = f"{link_name}:Work/data/{self.dataset_name}/"
+
+        if self.store == self.dataset.primary:
+            if self.store.is_archive:
+                raise ValueError("Primary data store should not be an archive.")
+            rc = run(["rsync", "-aP", store_path, self.dataset.local_path]).returncode
+        else:
+            rc = run(["rsync", "-aP", self.dataset.local_path, store_path]).returncode
+        if rc == 0:
+            self.last_sync = datetime.now()
+        return rc
 
 
 @lru_cache

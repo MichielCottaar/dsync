@@ -2,9 +2,24 @@
 from .models import Dataset, DataStore, ToSync
 
 
-def stores(session):
-    """Return a list of all remote stores and their connections."""
-    return [(store, store.get_connection()) for store in session.query(DataStore).all()]
+def datasets(session, name=None):
+    """Return a list of all datasets."""
+    return _get_data(session, Dataset, name=name)
+
+
+def stores(session, name=None):
+    """Return a list of all remote stores."""
+    return _get_data(session, DataStore, name=name)
+
+
+def _get_data(session, cls, name=None):
+    """Query the tables for datasets or data stores."""
+    if name is not None:
+        result = session.query(cls).get(name)
+        if result is None:
+            raise ValueError(f"Attempted to get non-existant {cls.__name__}: {name}.")
+        return result
+    return session.query(cls).all()
 
 
 def last_sync(dataset, data_store, session):
