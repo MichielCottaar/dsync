@@ -18,9 +18,12 @@ def cli():
 @cli.command
 @click.argument("name")
 @click.argument("description")
+@click.option("-p", "--primary", default=None)
 @in_session
 def add_dataset(name, description, session, primary=None):
     """Add locally existing dataset to database."""
+    if isinstance(primary, str):
+        primary = stores(session, name=primary)
     new_dataset = Dataset(
         name=name,
         description=description,
