@@ -1,5 +1,5 @@
 """Collecting information from the database."""
-from .models import Dataset, DataStore, ToSync
+from .models import Dataset, DataStore, ToSync, in_session
 
 
 def datasets(session, *args, **kwargs):
@@ -36,3 +36,21 @@ def last_sync(dataset, data_store, session):
         if to_sync is None
         else ("upcoming" if to_sync.last_sync is None else to_sync.last_sync)
     )
+
+
+@in_session
+def complete_datasets(ctx, param, incomplete, session, archived=None):
+    """Provide shell completion for datasets."""
+    all_names = [
+        d.name
+        for d in datasets(session)
+        if (archived is None or (archived == d.archived))
+    ]
+    return [n for n in all_names if n.lower().startswith(incomplete.lower())]
+
+
+@in_session
+def complete_stores(ctx, param, incomplete, session, only_remotes=False):
+    """Provide shell completion for data stores."""
+    all_names = [s.name for s in stores(session) if not (only_remotes and s.is_archive)]
+    return [n for n in all_names if n.lower().startswith(incomplete.lower())]

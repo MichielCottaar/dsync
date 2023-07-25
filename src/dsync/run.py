@@ -1,12 +1,13 @@
 """CLI interface for dsync."""
 import os.path as op
+from functools import partial
 
 import click
 import rich
 from rich.table import Table
 
 from .models import Dataset, DataStore, ToSync, in_session
-from .query import datasets, last_sync, stores
+from .query import complete_datasets, complete_stores, datasets, last_sync, stores
 
 
 @click.group
@@ -18,7 +19,12 @@ def cli():
 @cli.command
 @click.argument("name")
 @click.argument("description")
-@click.option("-p", "--primary", default=None)
+@click.option(
+    "-p",
+    "--primary",
+    default=None,
+    shell_complete=partial(complete_stores, only_remotes=True),
+)
 @in_session
 def add_dataset(name, description, session, primary=None):
     """Add locally existing dataset to database."""
@@ -66,8 +72,8 @@ def add_data_store(name, type, is_archive, link, session):
 
 
 @cli.command
-@click.argument("dataset")
-@click.argument("remote")
+@click.argument("dataset", shell_complete=complete_datasets)
+@click.argument("remote", shell_complete=partial(complete_stores, only_remotes=True))
 @in_session
 def add_sync(dataset, remote, session):
     """Instruct dsync to sync dataset with remote from now on."""
@@ -95,8 +101,13 @@ def add_sync(dataset, remote, session):
 
 
 @cli.command
-@click.argument("dataset")
-@click.argument("primary", default=None, required=False)
+@click.argument("dataset", shell_complete=complete_datasets)
+@click.argument(
+    "primary",
+    default=None,
+    required=False,
+    shell_complete=partial(complete_stores, only_remotes=True),
+)
 @click.option("--skip-sync", is_flag=True, default=False)
 @in_session
 def set_primary(dataset, primary, session, skip_sync=False):
@@ -211,8 +222,8 @@ def list_datasets(session):
 
 
 @cli.command
-@click.option("-d", "--dataset")
-@click.option("-s", "--store")
+@click.option("-d", "--dataset", shell_complete=complete_datasets)
+@click.option("-s", "--store", shell_complete=complete_stores)
 @in_session
 def sync(session, dataset=None, store=None):
     """Sync any dataset to any remote."""
@@ -237,7 +248,7 @@ def sync(session, dataset=None, store=None):
 
 
 @cli.command
-@click.argument("dataset")
+@click.argument("dataset", shell_complete=partial(complete_datasets, archived=False))
 @in_session
 def archive(dataset, session):
     """
@@ -264,7 +275,7 @@ def archive(dataset, session):
 
 
 @cli.command
-@click.argument("dataset")
+@click.argument("dataset", shell_complete=partial(complete_datasets, archived=True))
 @in_session
 def unarchive(dataset, session):
     """
