@@ -93,7 +93,7 @@ class Dataset(Base):
                 mtime = os.stat(full_path).st_mtime
                 if mtime > max_mtime:
                     max_mtime = mtime
-        self.latest_edit = datetime.fromtimestamp(mtime)
+        self.latest_edit = datetime.fromtimestamp(max_mtime)
 
     def __repr__(
         self,
