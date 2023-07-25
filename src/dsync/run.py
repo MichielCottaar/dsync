@@ -32,6 +32,8 @@ def add_dataset(name, description, session, primary=None):
     if primary is None and not op.isdir(new_dataset.local_path):
         raise ValueError("Cannot start syncing a dataset that does not exist locally.")
     session.add(new_dataset)
+    if primary is not None:
+        add_sync.callback(new_dataset.name, primary.name, session=session)
 
 
 @cli.command
@@ -184,7 +186,12 @@ def list_datasets(session):
             row.extend(["local", "primary"])
         else:
             ls = last_sync(dataset, dataset.primary, session)
-            row.extend([dataset.primary.name, ls.strftime("%Y-%m-%d %H:%M")])
+            row.extend(
+                [
+                    dataset.primary.name,
+                    ls if isinstance(ls, str) else ls.strftime("%Y-%m-%d %H:%M"),
+                ]
+            )
         dataset.update_latest_edit()
         row.insert(2, dataset.latest_edit.strftime("%Y-%m-%d %H:%M"))
 
