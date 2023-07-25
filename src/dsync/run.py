@@ -170,7 +170,7 @@ def list_datasets(session):
             row = [
                 dataset.name,
                 "📁",
-                dataset.latest_edit.strftime("%Y-%m-%d %I:%M"),
+                dataset.latest_edit.strftime("%Y-%m-%d %H:%M"),
             ] + [""] * (len(all_stores) + 1)
             table.add_row(*row)
             continue
@@ -181,9 +181,9 @@ def list_datasets(session):
             row.extend(["local", "primary"])
         else:
             ls = last_sync(dataset, dataset.primary, session)
-            row.extend([dataset.primary.name, ls.strftime("%Y-%m-%d %I:%M")])
+            row.extend([dataset.primary.name, ls.strftime("%Y-%m-%d %H:%M")])
         dataset.update_latest_edit()
-        row.insert(2, dataset.latest_edit.strftime("%Y-%m-%d %I:%M"))
+        row.insert(2, dataset.latest_edit.strftime("%Y-%m-%d %H:%M"))
 
         for store in all_stores:
             if store == dataset.primary:
@@ -193,7 +193,7 @@ def list_datasets(session):
                 row.append(
                     ""
                     if ls is None
-                    else (ls if isinstance(ls, str) else ls.strftime("%Y-%m-%d %I:%M"))
+                    else (ls if isinstance(ls, str) else ls.strftime("%Y-%m-%d %H:%M"))
                 )
         table.add_row(*row)
 
