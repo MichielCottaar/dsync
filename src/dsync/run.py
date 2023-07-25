@@ -117,6 +117,10 @@ def set_primary(dataset, primary, session, skip_sync=False):
     If the primary is not provided, it will be set to the local directory system.
     """
     dataset = datasets(session, name=dataset)
+    if dataset.archived:
+        raise ValueError(
+            "Cannot set primary of archived dataset. Please run `dsync unarchive` on it first."
+        )
     if dataset is None:
         raise ValueError(f"Cannot set primary of non-existant dataset {dataset}.")
     if primary is not None:
@@ -248,7 +252,7 @@ def sync(session, dataset=None, store=None):
 
 
 @cli.command
-@click.argument("dataset", shell_complete=partial(complete_datasets, archived=False))
+@click.argument("dataset", shell_complete=complete_datasets)
 @in_session
 def archive(dataset, session):
     """

@@ -39,13 +39,9 @@ def last_sync(dataset, data_store, session):
 
 
 @in_session
-def complete_datasets(ctx, param, incomplete, session, archived=None):
+def complete_datasets(ctx, param, incomplete, session, archived=False):
     """Provide shell completion for datasets."""
-    all_names = [
-        d.name
-        for d in datasets(session)
-        if (archived is None or (archived == d.archived))
-    ]
+    all_names = [d.name for d in datasets(session) if archived == d.archived]
     return [n for n in all_names if n.lower().startswith(incomplete.lower())]
 
 
