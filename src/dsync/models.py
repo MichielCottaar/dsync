@@ -3,7 +3,6 @@ import os
 import os.path as op
 from datetime import datetime
 from functools import lru_cache, wraps
-from subprocess import run
 
 from sqlalchemy import (
     Boolean,
@@ -14,6 +13,8 @@ from sqlalchemy import (
     create_engine,
 )
 from sqlalchemy.orm import Session, declarative_base, relationship
+
+from .transfer import get_transfer_protocol
 
 Base = declarative_base()
 
@@ -47,20 +48,8 @@ class DataStore(Base):
 
         Returns None if no connection is available.
         """
-        for try_link in self.link.split(","):
-            if self.type == "ssh":
-                if (
-                    run(["ssh", try_link, "-oBatchMode=yes", "-q", "echo"]).returncode
-                    == 0
-                ):
-                    return try_link
-            elif self.type == "disc":
-                directory = f"/Volumes/{try_link}/data-archive/"
-                if op.isdir(directory):
-                    return directory
-            else:
-                raise ValueError("Unrecognised data store type")
-        return None
+        transfer = get_transfer_protocol(self)
+        return transfer if transfer.setup_connection() else None
 
 
 class Dataset(Base):
@@ -181,28 +170,19 @@ class ToSync(Base):
         if self.store.type == "ssh":
             return f"/Volumes/{self.store_name}/data-archive/{self.dataset_name}/"
 
-    def sync(self, link_name):
+    def sync(self, link):
         """Sync data in dataset from/to the store."""
         if self.dataset.archived:
             raise ValueError("Cannot sync an archived dataset.")
-        if link_name is None:
+        if link is None:
             raise ValueError(
                 f"Trying to sync with an unavailable data store {self.store_name}"
             )
 
-        if self.store.type == "disc":
-            store_path = f"{link_name}/{self.dataset.name}/"
-        elif self.store.type == "ssh":
-            store_path = f"{link_name}:Work/data/{self.dataset.name}/"
-
-        if self.store == self.dataset.primary:
-            if self.store.is_archive:
-                raise ValueError("Primary data store should not be an archive.")
-            cmd = ["rsync", "-aP", store_path, self.dataset.local_path]
-        else:
-            cmd = ["rsync", "-aP", self.dataset.local_path, store_path]
-        print("running ", " ".join(cmd))
-        rc = run(cmd).returncode
+        from_local = self.store != self.dataset.primary
+        if not from_local and self.store.is_archive:
+            raise ValueError("Primary data store should not be an archive.")
+        rc = link.sync(self.dataset.name, from_local=from_local)
         if rc == 0:
             self.last_sync = datetime.now()
         return rc

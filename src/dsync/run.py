@@ -1,6 +1,5 @@
 """CLI interface for dsync."""
 import os.path as op
-from subprocess import run
 
 import click
 import rich
@@ -273,12 +272,7 @@ def unarchive(dataset, session):
         link = store.get_connection()
         if link is None:
             continue
-        if (
-            run(
-                ["rsync", "-aP", op.join(link, dataset), dataset_obj.local_path]
-            ).returncode
-            == 0
-        ):
+        if link.sync(dataset, from_local=False) == 0:
             break
     else:
         raise ValueError(f"Could not retrieve '{dataset}' from archive.")
