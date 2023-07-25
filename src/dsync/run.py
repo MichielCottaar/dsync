@@ -268,11 +268,9 @@ def unarchive(dataset, session):
         raise ValueError(f"Dataset '{dataset}' is not archived already.")
 
     for store in stores(session):
-        print(store)
         if not store.is_archive:
             continue
         link = store.get_connection()
-        print(link)
         if link is None:
             continue
         if (
