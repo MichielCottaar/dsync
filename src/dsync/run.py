@@ -171,7 +171,7 @@ def list(session):
 @in_session
 def get_remotes(dataset, session):
     """Print the primary of given dataset to stdout."""
-    obj = get_dataset(session, name=dataset)
+    obj = get_dataset(session, name=dataset, verbose=False)
     if obj is None:
         if dataset is None:
             raise ValueError(
@@ -408,7 +408,7 @@ def transfer_specific_files(paths, store, from_local, session):  # noqa: C901
             "Please run `dsync unarchive` before transfering data."
         )
     for path in paths[1:]:
-        if dataset != get_dataset(session, current_directory=path):
+        if dataset != get_dataset(session, current_directory=path, verbose=False):
             raise ValueError("Not all requested paths are in the same dataset.")
 
     if store is None:

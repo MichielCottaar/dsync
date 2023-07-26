@@ -11,7 +11,7 @@ def datasets(session, *args, **kwargs):
     return _get_data(session, Dataset, *args, **kwargs)
 
 
-def get_dataset(session, name=None, current_directory=None):
+def get_dataset(session, name=None, current_directory=None, verbose=True):
     """
     Return a specific dataset identified by name.
 
@@ -26,7 +26,8 @@ def get_dataset(session, name=None, current_directory=None):
         data_dir = op.expanduser("~/Work/data").split(op.sep)
         if abs_dir[: len(data_dir)] == data_dir:
             name = abs_dir[len(data_dir)]
-            rich.print(f"Current dataset is determined to be {name}")
+            if verbose:
+                rich.print(f"Current dataset is determined to be {name}")
         else:
             return None
     return session.query(Dataset).get(name)
