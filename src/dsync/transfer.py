@@ -61,16 +61,16 @@ class TransferProtocol(ABC):
         """Set up the connection in a sub-class."""
         pass
 
-    def local_path(self, dataset_name):
+    def local_path(self, dataset_name, relative_path=""):
         """Return local path to `dataset_name`."""
-        return op.expanduser(f"~/Work/data/{dataset_name}/")
+        return op.expanduser(f"~/Work/data/{dataset_name}/{relative_path}")
 
     @abstractmethod
-    def remote_path(self, dataset_name):
+    def remote_path(self, dataset_name, relative_path=""):
         """Return path to `dataset_name` in the DataStore."""
         pass
 
-    def rsync_command(self, dataset_name, from_local=True):
+    def rsync_command(self, dataset_name, relative_path="", from_local=True):
         """
         Return the rsync command needed to sync the data.
 
@@ -78,7 +78,10 @@ class TransferProtocol(ABC):
         Set `from_local` to False to revert this.
         """
         cmd = ["rsync", "-aP", "--delete"]
-        paths = [self.local_path(dataset_name), self.remote_path(dataset_name)]
+        paths = [
+            self.local_path(dataset_name, relative_path),
+            self.remote_path(dataset_name, relative_path),
+        ]
         if from_local:
             res = cmd + paths
         else:
@@ -86,14 +89,14 @@ class TransferProtocol(ABC):
         rich.print("running", " ".join(res))
         return res
 
-    def sync(self, dataset_name, from_local=True):
+    def sync(self, dataset_name, relative_path="", from_local=True):
         """
         Sync the dataset from/to the data store.
 
         By default data will be synced from the local machine to the DataStore.
         Set `from_local` to False to revert this.
         """
-        cmd = self.rsync_command(dataset_name, from_local=from_local)
+        cmd = self.rsync_command(dataset_name, relative_path, from_local=from_local)
         return run(cmd).returncode
 
 
@@ -107,9 +110,9 @@ class DiscTransfer(TransferProtocol):
     def _setup_connection(self):
         return op.isdir(self.remote_path("."))
 
-    def remote_path(self, dataset_name):
+    def remote_path(self, dataset_name, relative_path=""):
         """Return path to dataset on external disc."""
-        return op.join("/", "Volumes", self.link, "data-archive", dataset_name) + "/"
+        return f"/Volumes/{self.link}/data-archive/{dataset_name}/{relative_path}"
 
 
 class SSHTransfer(TransferProtocol):
@@ -144,22 +147,22 @@ class SSHTransfer(TransferProtocol):
                     return True
         return False
 
-    def local_path(self, dataset_name):
+    def local_path(self, dataset_name, relative_path=""):
         """Return path to dataset on local laptop."""
-        return "mac:" + super().local_path(dataset_name)
+        return "mac:" + super().local_path(dataset_name, relative_path)
 
-    def remote_path(self, dataset_name):
+    def remote_path(self, dataset_name, relative_path=""):
         """Return path to dataset on ssh server."""
-        return op.join("Work", "data", dataset_name) + "/"
+        return op.join(op.join("Work", "data", dataset_name) + "/", relative_path)
 
-    def sync(self, dataset_name, from_local=True):
+    def sync(self, dataset_name, relative_path="", from_local=True):
         """
         Sync the dataset from/to the SSH server.
 
         By default data will be synced from the local machine to the SSH server.
         Set `from_local` to False to revert this.
         """
-        cmd = self.rsync_command(dataset_name, from_local=from_local)
+        cmd = self.rsync_command(dataset_name, relative_path, from_local=from_local)
         cmd_fixed = " ".join([part.replace(" ", "\\ ") for part in cmd])
         self.connection.stdin.write(cmd_fixed + "\n")
         pwd = self._random_string() + "\n"
@@ -168,7 +171,7 @@ class SSHTransfer(TransferProtocol):
 
         to_print = False
         for line in self.connection.stdout:
-            if "building file list" in line:
+            if "file list" in line:
                 to_print = True
             if line == pwd:
                 return 0

@@ -322,3 +322,76 @@ def unarchive(dataset, session):
     rich.print("unarchiving", dataset_obj)
     dataset_obj.archived = False
     dataset_obj.primary = None
+
+
+@cli.command
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
+@click.option("-s", "--store", shell_complete=complete_stores)
+def put(paths, store):
+    """
+    Copy a specific file or directory from the local machine to the given store.
+
+    This allows files to be transfered from another machine to the primary store.
+    By default, the target store will be the primary
+    (raises an error if the local machine is the primary).
+    """
+    transfer_specific_files(paths, store, from_local=True)
+
+
+@cli.command
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
+@click.option("-s", "--store", shell_complete=complete_stores)
+def get(paths, store):
+    """
+    Copy a specific file or directory from a given store to the local machine.
+
+    This allows files to be transfered from another machine to the primary store.
+    By default, the target store will be the primary
+    (raises an error if the local machine is the primary).
+    """
+    transfer_specific_files(paths, store, from_local=False)
+
+
+@in_session
+def transfer_specific_files(paths, store, from_local, session):  # noqa: C901
+    """
+    Transfer specific files from/to a remote store.
+
+    Used by `dsync put` and `dsync get`.
+    """
+    dataset = get_dataset(session, current_directory=paths[0])
+    if dataset is None:
+        raise ValueError(
+            f"Can only transfer files that are part of a dataset, which '{paths[0]}' is not."
+        )
+    for path in paths[1:]:
+        if dataset != get_dataset(session, current_directory=path):
+            raise ValueError("Not all requested paths are in the same dataset.")
+
+    if store is None:
+        store = dataset.primary
+        if store is None:
+            raise ValueError(
+                f"Local storage is the primary for {dataset.name}. "
+                "Please set -s/--store to select a target."
+            )
+    else:
+        store = stores(session, name=store)
+
+    if not store.is_archive:
+        sync_obj = session.query(ToSync).get((dataset.name, store.name))
+        if sync_obj is None:
+            rich.print(f"Sending data to unsynced remote {store.name}")
+
+    connection = store.get_connection()
+    if connection is None:
+        raise ValueError(f"Unable to set up connection to {store.name}.")
+
+    for path in paths:
+        dataset = get_dataset(session, current_directory=path)
+        relpath = op.relpath(
+            op.abspath(path), op.expanduser(f"~/Work/data/{dataset.name}")
+        )
+        if path.endswith("/"):
+            relpath = relpath + "/"
+        connection.sync(dataset.name, relpath, from_local=from_local)
