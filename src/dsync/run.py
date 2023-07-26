@@ -388,7 +388,6 @@ def transfer_specific_files(paths, store, from_local, session):  # noqa: C901
         raise ValueError(f"Unable to set up connection to {store.name}.")
 
     for path in paths:
-        dataset = get_dataset(session, current_directory=path)
         relpath = op.relpath(
             op.abspath(path), op.expanduser(f"~/Work/data/{dataset.name}")
         )
