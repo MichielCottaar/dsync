@@ -141,10 +141,15 @@ class SSHTransfer(TransferProtocol):
             pwd = self._random_string() + "\n"
             connection.stdin.write("echo " + pwd)
             connection.stdin.flush()
-            for line in connection.stdout:
-                if line == pwd:
-                    self.connection = connection
-                    return True
+            try:
+                for line in connection.stdout:
+                    if line == pwd:
+                        self.connection = connection
+                        return True
+            except KeyboardInterrupt:
+                rich.print(
+                    f"User interrupted trying to connect with {link}. Continuing..."
+                )
         return False
 
     def local_path(self, dataset_name, relative_path=""):
