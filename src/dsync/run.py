@@ -279,7 +279,7 @@ def archive(dataset, session):
     if dataset_obj.archived:
         raise ValueError(f"Dataset '{dataset_obj.name}' is already archived.")
     if dataset_obj.primary is not None:
-        sync.callback(session=session, dataset=dataset)
+        sync.callback(session=session, dataset=dataset, store=dataset_obj.primary.name)
     dataset_obj.update_latest_edit()
     for sync_obj in dataset_obj.syncs:
         if sync_obj.store.is_archive and (
