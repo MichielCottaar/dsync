@@ -339,7 +339,7 @@ def put(paths, store):
 
 
 @cli.command
-@click.argument("paths", nargs=-1, type=click.Path(exists=True))
+@click.argument("paths", nargs=-1, type=click.Path(writable=True))
 @click.option("-s", "--store", shell_complete=complete_stores)
 def get(paths, store):
     """
@@ -391,6 +391,8 @@ def transfer_specific_files(paths, store, from_local, session):  # noqa: C901
         relpath = op.relpath(
             op.abspath(path), op.expanduser(f"~/Work/data/{dataset.name}")
         )
-        if path.endswith("/"):
+        if (op.exists(path) and op.isdir(path)) or (  # I know it is a path
+            not op.exists(path) and path.endswith("/")  # User told me its a path
+        ):
             relpath = relpath + "/"
         connection.sync(dataset.name, relpath, from_local=from_local)
