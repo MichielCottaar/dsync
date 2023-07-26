@@ -7,7 +7,14 @@ import rich
 from rich.table import Table
 
 from .models import Dataset, DataStore, ToSync, in_session
-from .query import complete_datasets, complete_stores, datasets, last_sync, stores
+from .query import (
+    complete_datasets,
+    complete_stores,
+    datasets,
+    get_dataset,
+    last_sync,
+    stores,
+)
 
 
 @click.group
@@ -18,7 +25,7 @@ def cli():
 
 @cli.command
 @click.argument("name")
-@click.argument("description")
+@click.argument("description", required=False, default=None)
 @click.option(
     "-p",
     "--primary",
@@ -28,6 +35,8 @@ def cli():
 @in_session
 def add_dataset(name, description, session, primary=None):
     """Add locally existing dataset to database."""
+    if description is None:
+        description = name
     if isinstance(primary, str):
         primary = stores(session, name=primary)
     new_dataset = Dataset(
@@ -72,8 +81,8 @@ def add_data_store(name, type, is_archive, link, session):
 
 
 @cli.command
-@click.argument("dataset", shell_complete=complete_datasets)
 @click.argument("remote", shell_complete=partial(complete_stores, only_remotes=True))
+@click.option("-d", "--dataset", shell_complete=complete_datasets, default=None)
 @in_session
 def add_sync(dataset, remote, session):
     """Instruct dsync to sync dataset with remote from now on."""
@@ -87,7 +96,7 @@ def add_sync(dataset, remote, session):
             "All datasets will be archived. "
             + f"No need to manually add archive datastore {remote_obj.name}."
         )
-    dataset_obj = session.query(Dataset).get(dataset)
+    dataset_obj = get_dataset(session, dataset)
     if dataset_obj is None:
         raise ValueError(
             f"Unrecognised dataset: {dataset}. Create new dataset using add-dataset."
@@ -101,13 +110,13 @@ def add_sync(dataset, remote, session):
 
 
 @cli.command
-@click.argument("dataset", shell_complete=complete_datasets)
 @click.argument(
     "primary",
     default=None,
     required=False,
     shell_complete=partial(complete_stores, only_remotes=True),
 )
+@click.option("-d", "--dataset", shell_complete=complete_datasets, default=None)
 @click.option("--skip-sync", is_flag=True, default=False)
 @in_session
 def set_primary(dataset, primary, session, skip_sync=False):
@@ -116,7 +125,7 @@ def set_primary(dataset, primary, session, skip_sync=False):
 
     If the primary is not provided, it will be set to the local directory system.
     """
-    dataset = datasets(session, name=dataset)
+    dataset = get_dataset(session, name=dataset)
     if dataset.archived:
         raise ValueError(
             "Cannot set primary of archived dataset. Please run `dsync unarchive` on it first."
@@ -147,10 +156,12 @@ def set_primary(dataset, primary, session, skip_sync=False):
 
 
 @cli.command
+@click.option("-t", "--test", is_flag=True, default=False)
 @in_session
-def list(session):
+def list(session, test=False):
     """List all data stores and datasets."""
-    list_stores(session)
+    if test:
+        list_stores(session)
     list_datasets(session)
 
 
@@ -231,7 +242,11 @@ def list_datasets(session):
 @in_session
 def sync(session, dataset=None, store=None):
     """Sync any dataset to any remote."""
-    all_datasets = datasets(session, name=dataset, as_list=True)
+    all_datasets = [get_dataset(session, dataset)]
+    if all_datasets[0] is None:
+        if dataset is not None:
+            raise ValueError(f"Trying to sync unknown dataset '{dataset}'")
+        all_datasets = datasets(session)
     all_stores = stores(session, name=store, as_list=True)
 
     store_links = {s: s.get_connection() for s in all_stores}
@@ -247,12 +262,12 @@ def sync(session, dataset=None, store=None):
             if rc != 0:
                 raise ValueError(f"Failed to sync {dataset}")
         except ValueError as e:
-            if dataset is not None:
+            if len(all_datasets) == 1:
                 raise e
 
 
 @cli.command
-@click.argument("dataset", shell_complete=complete_datasets)
+@click.option("-d", "--dataset", shell_complete=complete_datasets)
 @in_session
 def archive(dataset, session):
     """
@@ -260,9 +275,9 @@ def archive(dataset, session):
 
     It will no longer be synced and can be safely deleted from other machines.
     """
-    dataset_obj = datasets(session, name=dataset)
+    dataset_obj = get_dataset(session, name=dataset)
     if dataset_obj.archived:
-        raise ValueError(f"Dataset '{dataset}' is already archived.")
+        raise ValueError(f"Dataset '{dataset_obj.name}' is already archived.")
     if dataset_obj.primary is not None:
         sync.callback(session=session, dataset=dataset)
     dataset_obj.update_latest_edit()
@@ -271,7 +286,7 @@ def archive(dataset, session):
             sync_obj.last_sync is None or (sync_obj.last_sync < dataset_obj.latest_edit)
         ):
             raise ValueError(
-                f"Can not archive dataset '{dataset}', "
+                f"Can not archive dataset '{dataset_obj.name}', "
                 f"because sync to store '{sync_obj.store.name}' is not up to date."
             )
     rich.print("archiving", dataset_obj)
@@ -279,7 +294,9 @@ def archive(dataset, session):
 
 
 @cli.command
-@click.argument("dataset", shell_complete=partial(complete_datasets, archived=True))
+@click.option(
+    "-d", "--dataset", shell_complete=partial(complete_datasets, archived=True)
+)
 @in_session
 def unarchive(dataset, session):
     """
@@ -287,9 +304,9 @@ def unarchive(dataset, session):
 
     The primary will always be reset to local.
     """
-    dataset_obj = datasets(session, name=dataset)
+    dataset_obj = get_dataset(session, name=dataset)
     if not dataset_obj.archived:
-        raise ValueError(f"Dataset '{dataset}' is not archived already.")
+        raise ValueError(f"Dataset '{dataset_obj.name}' is not archived already.")
 
     for store in stores(session):
         if not store.is_archive:
@@ -297,10 +314,10 @@ def unarchive(dataset, session):
         link = store.get_connection()
         if link is None:
             continue
-        if link.sync(dataset, from_local=False) == 0:
+        if link.sync(dataset_obj.name, from_local=False) == 0:
             break
     else:
-        raise ValueError(f"Could not retrieve '{dataset}' from archive.")
+        raise ValueError(f"Could not retrieve '{dataset_obj.name}' from archive.")
 
     rich.print("unarchiving", dataset_obj)
     dataset_obj.archived = False
