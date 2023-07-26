@@ -156,7 +156,45 @@ def set_primary(dataset, primary, session, skip_sync=False):
 
 
 @cli.command
-@click.option("-t", "--test", is_flag=True, default=False)
+@in_session
+def list(session):
+    """List the datasets to stdout."""
+    for dataset in datasets(session):
+        if not dataset.archived:
+            print(dataset.name)
+
+
+@cli.command
+@click.option(
+    "-d", "--dataset", shell_complete=partial(complete_datasets, archived=False)
+)
+@in_session
+def get_remotes(dataset, session):
+    """Print the primary of given dataset to stdout."""
+    obj = get_dataset(session, name=dataset)
+    if obj is None:
+        if dataset is None:
+            raise ValueError(
+                "Not currently in a dataset. Please set `-d/--dataset` explicitly."
+            )
+        else:
+            raise ValueError(f"Dataset '{dataset}' does not exist.")
+    if obj.archived:
+        raise ValueError(f"Archived datasets like '{obj}' do not have remotes.")
+    if obj.primary is None:
+        primary = "local"
+    else:
+        primary = obj.primary.name
+    print(primary)
+    if primary != "local":
+        print("local")
+
+    for to_sync in obj.syncs:
+        if not to_sync.store.is_archive and to_sync.store.name != primary:
+            print(to_sync.store.name)
+
+
+@cli.command
 @in_session
 def summary(session, test=False):
     """Summarises all data stores and datasets."""
