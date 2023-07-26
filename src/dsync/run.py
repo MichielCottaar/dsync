@@ -158,14 +158,14 @@ def set_primary(dataset, primary, session, skip_sync=False):
 @cli.command
 @click.option("-t", "--test", is_flag=True, default=False)
 @in_session
-def list(session, test=False):
-    """List all data stores and datasets."""
+def summary(session, test=False):
+    """Summarises all data stores and datasets."""
     if test:
-        list_stores(session)
-    list_datasets(session)
+        summary_stores(session)
+    summary_datasets(session)
 
 
-def list_stores(session):
+def summary_stores(session):
     """List all data stores (remotes & archives)."""
     remotes = Table(title="Remote data stores")
     for header in ("name", "link", "works"):
@@ -185,7 +185,7 @@ def list_stores(session):
     rich.print(remotes)
 
 
-def list_datasets(session):
+def summary_datasets(session):
     """List all datasets."""
     all_stores = stores(session)
     all_datasets = datasets(session)
