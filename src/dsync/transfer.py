@@ -169,12 +169,9 @@ class SSHTransfer(TransferProtocol):
         self.connection.stdin.write("echo " + pwd)
         self.connection.stdin.flush()
 
-        to_print = False
         for line in self.connection.stdout:
-            if "file list" in line:
-                to_print = True
+            if "file list" in line or "files to consider" in line:
+                print(line, end="")
             if line == pwd:
                 return 0
-            if to_print:
-                print(line, end="")
         return 1
