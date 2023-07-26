@@ -364,6 +364,11 @@ def transfer_specific_files(paths, store, from_local, session):  # noqa: C901
         raise ValueError(
             f"Can only transfer files that are part of a dataset, which '{paths[0]}' is not."
         )
+    if dataset.archived:
+        raise ValueError(
+            f"Dataset '{dataset.name}' is archived. "
+            "Please run `dsync unarchive` before transfering data."
+        )
     for path in paths[1:]:
         if dataset != get_dataset(session, current_directory=path):
             raise ValueError("Not all requested paths are in the same dataset.")
