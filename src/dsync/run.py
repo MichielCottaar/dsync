@@ -285,18 +285,10 @@ def sync(session, dataset=None, store=None):
         if dataset is not None:
             raise ValueError(f"Trying to sync unknown dataset '{dataset}'")
         all_datasets = datasets(session)
-    all_stores = stores(session, name=store, as_list=True)
-
-    store_links = {s: s.get_connection() for s in all_stores}
-    missing = ", ".join(
-        [key.name for key, value in store_links.items() if value is None]
-    )
-    if len(missing) > 0:
-        rich.print(f"Skipping missing data stores: {missing}")
 
     for ds_iter in all_datasets:
         try:
-            rc = ds_iter.sync(session, store_links)
+            rc = ds_iter.sync(session, store)
             if rc != 0:
                 raise ValueError(f"Failed to sync {dataset}")
         except ValueError as e:

@@ -101,38 +101,23 @@ class Dataset(Base):
         """Represent dataset as string."""
         return f"Dataset(name={self.name})"
 
-    def sync(self, session, store_links):
+    def sync(self, session, store=None):
         """Sync this dataset with the given store links."""
-        if self.primary is not None:
-            if self.primary not in store_links:
-                link = self.primary.get_connection()
-            else:
-                link = store_links[self.primary]
-            if link is None:
-                raise ValueError(
-                    f"Connection to primary store {self.primary_name} "
-                    + f"is not available for {self.name}."
-                )
+        if self.primary is not None and store is None:
             to_sync = session.query(ToSync).get((self.name, self.primary_name))
-            if to_sync.sync(link) != 0:
+            if to_sync.sync() != 0:
                 return 1
-
-        return_codes = []
-        for remote, link in store_links.items():
-            if remote == self.primary:
-                return_codes.append(0)
-                continue
-            if link is None:
-                continue
-            to_sync = session.query(ToSync).get((self.name, remote.name))
+        if store is not None:
+            to_sync = session.query(ToSync).get((self.name, store))
             if to_sync is None:
-                if remote.is_archive:
-                    to_sync = ToSync(dataset=self, store=remote)
-                    session.add(to_sync)
-                else:
-                    continue
-            return_codes.append(to_sync.sync(link))
-        return 1 if len(return_codes) == 0 else min(abs(x) for x in return_codes)
+                return 1
+            return to_sync.sync()
+        else:
+            return_codes = []
+            for to_sync in self.syncs:
+                if to_sync.store.name != store:
+                    return_codes.append(to_sync.sync())
+            return 1 if len(return_codes) == 0 else min(abs(x) for x in return_codes)
 
 
 class ToSync(Base):
@@ -170,14 +155,14 @@ class ToSync(Base):
         if self.store.type == "ssh":
             return f"/Volumes/{self.store_name}/data-archive/{self.dataset_name}/"
 
-    def sync(self, link):
+    def sync(self, link=None):
         """Sync data in dataset from/to the store."""
         if self.dataset.archived:
             raise ValueError("Cannot sync an archived dataset.")
         if link is None:
-            raise ValueError(
-                f"Trying to sync with an unavailable data store {self.store_name}"
-            )
+            link = self.store.get_connection()
+        if link is None:
+            return 1
 
         from_local = self.store != self.dataset.primary
         if not from_local and self.store.is_archive:
