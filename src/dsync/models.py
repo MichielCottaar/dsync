@@ -95,6 +95,16 @@ class Dataset(Base):
                     max_mtime = mtime
         self.latest_edit = datetime.fromtimestamp(max_mtime)
 
+    def all_syncs(self, session):
+        """Return dictionary with all sync objects related with this DataSet."""
+        existing_syncs = {tosync.store.name: tosync for tosync in self.syncs}
+        for store in session.query(DataStore).all():
+            if store.name not in existing_syncs and store.is_archive:
+                new_sync = ToSync(dataset=self, store=store)
+                session.add(new_sync)
+                existing_syncs[store.name] = new_sync
+        return existing_syncs
+
     def __repr__(
         self,
     ):
@@ -104,14 +114,16 @@ class Dataset(Base):
     def sync(self, session, store=None):
         """Sync this dataset with the given store links."""
         if self.primary is not None and store is None:
-            to_sync = session.query(ToSync).get((self.name, self.primary_name))
-            if to_sync.sync() != 0:
+            primary_sync = session.query(ToSync).get((self.name, self.primary_name))
+            if primary_sync.sync() != 0:
                 return 1
+        all_syncs = self.all_syncs(session)
         if store is not None:
-            to_sync = session.query(ToSync).get((self.name, store))
-            if to_sync is None:
+            if store not in all_syncs:
                 return 1
-            return to_sync.sync()
+            result = all_syncs[store].sync()
+            if result == 0 and self.primary is not None:
+                all_syncs[store].last_sync = all_syncs[self.primary.name].last_sync
         else:
             return_codes = []
             for to_sync in self.syncs:
