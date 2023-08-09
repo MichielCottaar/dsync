@@ -24,7 +24,7 @@ def get_dataset(session, name=None, current_directory=None, verbose=True):
             current_directory = op.curdir
         abs_dir = op.normpath(op.abspath(current_directory)).split(op.sep)
         data_dir = op.expanduser("~/Work/data").split(op.sep)
-        if abs_dir[: len(data_dir)] == data_dir:
+        if abs_dir[: len(data_dir)] == data_dir and len(abs_dir) > len(data_dir):
             name = abs_dir[len(data_dir)]
             if verbose:
                 rich.print(f"Current dataset is determined to be {name}")
