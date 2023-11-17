@@ -290,7 +290,7 @@ def sync(session, dataset=None, store=None):
         try:
             rc = ds_iter.sync(session, store)
             if rc != 0:
-                raise ValueError(f"Failed to sync {dataset}")
+                raise ValueError(f"Failed to sync {ds_iter}")
         except ValueError as e:
             if len(all_datasets) == 1:
                 raise e
