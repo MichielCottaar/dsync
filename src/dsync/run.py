@@ -291,9 +291,9 @@ def sync(session, dataset=None, store=None):
             rc = ds_iter.sync(session, store)
             if rc != 0:
                 raise ValueError(f"Failed to sync {ds_iter}")
-        except ValueError as e:
+        except ValueError:
             if len(all_datasets) == 1:
-                raise e
+                raise
 
 
 @cli.command
