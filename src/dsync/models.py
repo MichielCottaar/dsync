@@ -124,6 +124,7 @@ class Dataset(Base):
             result = all_syncs[store].sync()
             if result == 0 and self.primary is not None:
                 all_syncs[store].last_sync = all_syncs[self.primary.name].last_sync
+            return result
         else:
             return_codes = []
             for to_sync in self.syncs:
