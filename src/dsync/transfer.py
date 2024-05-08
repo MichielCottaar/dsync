@@ -77,7 +77,7 @@ class TransferProtocol(ABC):
         By default data will be synced from the local machine to the DataStore.
         Set `from_local` to False to revert this.
         """
-        cmd = ["rsync", "-aP", "--delete"]
+        cmd = ["rsync", "-aP", "--delete", "--bwlimit=256m"]
         paths = [
             self.local_path(dataset_name, relative_path),
             self.remote_path(dataset_name, relative_path),
