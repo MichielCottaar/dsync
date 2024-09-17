@@ -90,9 +90,12 @@ class Dataset(Base):
         for dirname, _, files in os.walk(self.local_path):
             for fname in files:
                 full_path = os.path.join(dirname, fname)
-                mtime = os.stat(full_path).st_mtime
-                if mtime > max_mtime:
-                    max_mtime = mtime
+                try:
+                    mtime = os.stat(full_path).st_mtime
+                    if mtime > max_mtime:
+                        max_mtime = mtime
+                except FileNotFoundError:
+                    continue
         self.latest_edit = datetime.fromtimestamp(max_mtime)
 
     def all_syncs(self, session):
