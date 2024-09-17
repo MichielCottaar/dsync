@@ -317,7 +317,8 @@ def archive(dataset, session):
         ):
             raise ValueError(
                 f"Can not archive dataset '{dataset_obj.name}', "
-                f"because sync to store '{sync_obj.store.name}' is not up to date."
+                f"because sync to store '{sync_obj.store.name}' is not up to date. "
+                "Please run `dsync sync` with that remote/archive available."
             )
     rich.print("archiving", dataset_obj)
     dataset_obj.archived = True
