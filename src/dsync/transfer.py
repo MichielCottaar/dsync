@@ -1,4 +1,5 @@
 """Defines how to transver data to/from a data store."""
+import os
 import os.path as op
 import random
 import string
@@ -112,7 +113,10 @@ class DiscTransfer(TransferProtocol):
 
     def remote_path(self, dataset_name, relative_path=""):
         """Return path to dataset on external disc."""
-        return f"/Volumes/{self.link}/data-archive/{dataset_name}/{relative_path}"
+        result = f"/Volumes/{self.link}/data-archive/{dataset_name}/{relative_path}"
+        if dataset_name != "." and not op.isdir(result):
+            os.makedirs(result)
+        return result
 
 
 class SSHTransfer(TransferProtocol):
