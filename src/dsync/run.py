@@ -226,7 +226,9 @@ def summary_stores(session):
 def summary_datasets(session):
     """List all datasets."""
     all_stores = stores(session)
-    all_datasets = datasets(session)
+    all_datasets = sorted(
+        sorted(datasets(session), key=lambda d: d.name), key=lambda d: d.archived
+    )
 
     table = Table(title="Datasets")
     for header in ("name", "primary", "latest edit", "local"):
